@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: broken-port-service
+spec:
+  selector:
+    app: port-trouble 
+  ports:
+    - protocol: TCP
+      port: 80        # Порт сервиса
+      targetPort: 8080  # должен быть 80.
