@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fast-fail
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fast-fail
+  template:
+    metadata:
+      labels:
+        app: fast-fail
+    spec:
+      containers:
+      - name: app
+        image: nginx:alpine
+        ports:
+        - containerPort: 80
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 8080  # Неправильный порт
+          initialDelaySeconds: 3
+          periodSeconds: 3
+          timeoutSeconds: 1  # Слишком мало для диагностики

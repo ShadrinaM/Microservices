@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: liveness-tcp-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: liveness-tcp
+  template:
+    metadata:
+      labels:
+        app: liveness-tcp
+    spec:
+      containers:
+      - name: redis
+        image: redis:7.0
+        ports:
+        - containerPort: 6379
+        livenessProbe:
+          tcpSocket:
+            port: 6380   # намеренно неверный порт (Redis слушает 6379)
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          failureThreshold: 3

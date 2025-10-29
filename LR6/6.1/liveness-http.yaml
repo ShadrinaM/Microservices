@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: liveness-http-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: liveness-http
+  template:
+    metadata:
+      labels:
+        app: liveness-http
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.25
+        ports:
+        - containerPort: 80
+        livenessProbe:
+          httpGet:
+            path: /healthz   # этот путь намеренно не существует в стандартном nginx
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          failureThreshold: 3
