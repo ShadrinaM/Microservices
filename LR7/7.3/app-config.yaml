@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+data:
+  database.url: jdbc:postgresql://localhost:5432/mydb
+  log.level: DEBUG
