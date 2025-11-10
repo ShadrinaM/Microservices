@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: app-config-pod
+spec:
+  containers:
+  - name: app-container
+    image: nginx:alpine
+    volumeMounts:
+    - name: app-config-volume
+      mountPath: /etc/app/config
+      readOnly: true
+    - name: app-security-volume
+      mountPath: /app/security
+      readOnly: true
+  volumes:
+  - name: app-config-volume
+    secret:
+      secretName: app-config-secret
+      items:
+      - key: application.properties
+        path: application.properties
+      defaultMode: 0644
+  - name: app-security-volume
+    secret:
+      secretName: app-config-secret
+      items:
+      - key: security.key
+        path: security.key
+      defaultMode: 0400
+  restartPolicy: Never

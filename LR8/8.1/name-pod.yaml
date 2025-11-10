@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: name-pod
+spec:
+  containers:
+  - name: test-container
+    image: nginx:alpine
+    env:
+    - name: API_KEY
+      valueFrom:
+        secretKeyRef:
+          name: name-secret
+          key: api-key
+    - name: AUTH_TOKEN
+      valueFrom:
+        secretKeyRef:
+          name: name-secret
+          key: auth-token
+    volumeMounts:
+    - name: secret-volume
+      mountPath: /app/secrets
+      readOnly: true
+  volumes:
+  - name: secret-volume
+    secret:
+      secretName: name-secret
+      items:
+      - key: encryption-key
+        path: encryption.key
