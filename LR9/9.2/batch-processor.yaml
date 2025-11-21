@@ -1,0 +1,20 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: batch-processor
+spec:
+  completions: 8
+  parallelism: 3
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: worker
+          image: busybox:latest
+          command:
+            - sh
+            - -c
+            - |
+              echo "Task started in pod: $(hostname)"
+              sleep $((RANDOM % 3 + 1))
+              echo "Task completed in pod: $(hostname)"

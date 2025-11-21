@@ -1,0 +1,23 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: fault-tolerant-job
+spec:
+  backoffLimit: 4
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: unstable-task
+          image: bash:5
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              value=$((RANDOM % 2))
+              if [ "$value" -eq 0 ]; then
+                echo "Task failed intentionally."
+                exit 1
+              else
+                echo "Task succeeded!"
+                exit 0
+              fi

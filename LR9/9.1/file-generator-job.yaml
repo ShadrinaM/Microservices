@@ -1,0 +1,23 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: file-generator-job
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: generator
+          image: alpine:latest
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              mkdir -p /output;
+              for i in $(seq 1 10); do echo $RANDOM >> /output/numbers.txt; done;
+              echo "Готово."
+          volumeMounts:
+            - name: out
+              mountPath: /output
+      volumes:
+        - name: out
+          emptyDir: {}

@@ -1,0 +1,13 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: problematic-job
+spec:
+  activeDeadlineSeconds: 33
+  template:
+    spec:
+      containers:
+      - name: sleeper
+        image: busybox
+        command: ['sh', '-c', 'echo "Задача началась..."; while true; do sleep 10; done']
+      restartPolicy: Never
