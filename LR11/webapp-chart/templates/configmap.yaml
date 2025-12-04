@@ -1,0 +1,14 @@
+{{- if .Values.config }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "webapp-chart.fullname" . }}-config
+  labels:
+    {{- include "webapp-chart.labels" . | nindent 4 }}
+    environment: {{ .Values.labels.environment }}
+data:
+  app.conf: |
+    LOG_LEVEL={{ .Values.config.logLevel }}
+    DEBUG={{ .Values.config.debugMode }}
+    API_ENDPOINT={{ .Values.config.apiEndpoint }}
+{{- end }}

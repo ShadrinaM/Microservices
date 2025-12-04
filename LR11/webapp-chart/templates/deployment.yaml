@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "webapp-chart.fullname" . }}
+  labels:
+    {{- include "webapp-chart.labels" . | nindent 4 }}
+    environment: {{ .Values.labels.environment }}
+    team: {{ .Values.labels.team }}
+    {{- if .Values.extraLabels.enabled }}
+    {{- range $key, $value := .Values.extraLabels }}
+    {{- if ne $key "enabled" }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+    {{- end }}
+    {{- end }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "webapp-chart.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "webapp-chart.selectorLabels" . | nindent 8 }}
+        environment: {{ .Values.labels.environment }}
+        team: {{ .Values.labels.team }}
+        {{- if .Values.extraLabels.enabled }}
+        {{- range $key, $value := .Values.extraLabels }}
+        {{- if ne $key "enabled" }}
+        {{ $key }}: {{ $value | quote }}
+        {{- end }}
+        {{- end }}
+        {{- end }}
+    spec:
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          {{- if .Values.environmentVariables }}
+          env:
+            {{- range .Values.environmentVariables }}
+            - name: {{ .name }}
+              value: {{ .value | quote }}
+            {{- end }}
+          {{- end }}
+          {{- if .Values.config }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "webapp-chart.fullname" . }}-config
+          {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}

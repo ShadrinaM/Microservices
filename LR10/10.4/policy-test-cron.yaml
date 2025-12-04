@@ -1,0 +1,19 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: policy-test-cron
+spec:
+  schedule: "*/2 * * * *"
+  concurrencyPolicy: Allow
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: worker
+              image: busybox
+              command:
+                - sh
+                - -c
+                - sleep 150

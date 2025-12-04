@@ -1,0 +1,23 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: sequential-processor-cron
+spec:
+  schedule: "*/4 * * * *"
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      completions: 4
+      parallelism: 1
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: processor
+              image: busybox
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  echo "Processing item $((RANDOM % 100))"
+                  sleep 30

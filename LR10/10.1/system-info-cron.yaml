@@ -1,0 +1,21 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: system-info-cron
+spec:
+  schedule: "*/5 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: info
+              image: busybox
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  echo "Time: $(date)"
+                  echo "Host: $(hostname)"
+                  echo "Processes: $(ps | wc -l)"

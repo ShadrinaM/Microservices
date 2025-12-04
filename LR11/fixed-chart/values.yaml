@@ -1,0 +1,28 @@
+replicaCount: 3
+
+image:
+  repository: nginx
+  tag: "1.21"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: false
+
+hpa:
+  enabled: false
+
+httpRoute:
+  enabled: false 
+
+autoscaling:
+  enabled: false
+
+resources: {}
+
+labels: {}
+
+annotations: {}

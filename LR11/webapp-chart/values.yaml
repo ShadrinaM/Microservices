@@ -1,0 +1,58 @@
+# Количество реплик
+replicaCount: 3
+
+# Настройки образа контейнера
+image:
+  repository: nginx
+  tag: "1.23"
+  pullPolicy: IfNotPresent
+
+# Настройки Service
+service:
+  type: ClusterIP
+  port: 8080
+  targetPort: 80
+
+# Основные метки
+labels:
+  environment: production
+  team: backend
+
+# Пользовательские метки
+customLabels:
+  environment: production
+  team: backend
+
+# Настройки ресурсов
+resources:
+  limits:
+    cpu: 200m
+    memory: 256Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+httpRoute:
+  enabled: false
+
+ingress:
+  enabled: false
+
+hpa:
+  enabled: false
+
+# Дополнительные метки (extraLabels)
+extraLabels:
+  enabled: true
+  project: "university"
+  course: "kubernetes"
+  semester: "spring"
+
+# Переменные окружения
+environmentVariables:
+  - name: "APP_ENV"
+    value: "production"
+  - name: "APP_DEBUG"
+    value: "false"
+  - name: "LOG_LEVEL"
+    value: "info"
