@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: problem-statefulset
+spec:
+  serviceName: "redis-service"
+  replicas: 3
+  selector:
+    matchLabels:
+      app: redis-problem
+  template:
+    metadata:
+      labels:
+        app: redis-problem
+    spec:
+      containers:
+      - name: redis-container
+        image: redis:7-alpine
+        ports:
+        - containerPort: 6379
+          name: redis
+        volumeMounts:
+        - name: redis-data
+          mountPath: /data
+  volumeClaimTemplates:
+  - metadata:
+      name: redis-data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      storageClassName: "non-existent-storage-class"  # <-- Несуществующий StorageClass
+      resources:
+        requests:
+          storage: 2Gi
