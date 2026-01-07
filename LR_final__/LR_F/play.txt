@@ -181,6 +181,7 @@ docker build -t auth-service:latest src/auth-service
 docker build -t profile-service:latest src/profile-service
 docker build -t notification-service:latest src/notification-service
 docker build -t frontend:latest frontend
+docker build -t report-service:latest src/report-service
 
 # Clean up existing deployments
 kubectl delete all --all -n user-platform-exam
@@ -204,11 +205,13 @@ kubectl exec -n user-platform-exam postgres-0 -- psql -U admin -d userdb -c "\dt
 kubectl apply -f kubernetes/auth-service.yaml
 kubectl apply -f kubernetes/profile-service.yaml
 kubectl apply -f kubernetes/notification-service.yaml
+kubectl apply -f kubernetes/report-service.yaml
 
 # Wait for services to be ready
 kubectl wait --for=condition=ready pod -l app=auth-service -n user-platform-exam --timeout=300s
 kubectl wait --for=condition=ready pod -l app=profile-service -n user-platform-exam --timeout=300s
 kubectl wait --for=condition=ready pod -l app=notification-service -n user-platform-exam --timeout=300s
+kubectl wait --for=condition=ready pod -l app=report-service -n user-platform-exam --timeout=300s
 
 # Deploy frontend
 kubectl apply -f kubernetes/frontend.yaml
@@ -219,9 +222,11 @@ kubectl get all -n user-platform-exam
 # Port-forward services for testing
 # Run these in separate terminal windows:
 kubectl port-forward -n user-platform-exam service/frontend 8081:80
+
 kubectl port-forward -n user-platform-exam service/auth-service 8080:80
 kubectl port-forward -n user-platform-exam service/profile-service 8082:80
 kubectl port-forward -n user-platform-exam service/notification-service 8083:80
+kubectl port-forward -n user-platform-exam service/report-service 8084:80
 
 # View logs
 kubectl logs -n user-platform-exam -l app=auth-service -f
@@ -230,3 +235,6 @@ kubectl logs -n user-platform-exam -l app=notification-service -f
 kubectl logs -n user-platform-exam -l app=frontend -f
 
 kubectl exec -n user-platform-exam postgres-0 -- psql -U admin -d userdb -c "SELECT * FROM notifications;"
+
+student112
+password123

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Отчёты — Пользователи по % прочтения уведомлений</title>
+    <style>
+        body{font-family:Arial, sans-serif;max-width:1000px;margin:0 auto;padding:20px;background:#f5f5f5}
+        .nav{display:flex;gap:10px;margin-bottom:20px}
+        .nav a{padding:8px 12px;background:#4CAF50;color:#fff;text-decoration:none;border-radius:4px}
+        table{width:100%;border-collapse:collapse;background:#fff;border-radius:6px;overflow:hidden}
+        th,td{padding:12px;border-bottom:1px solid #eee;text-align:left}
+        th{background:#f0f0f0}
+    </style>
+</head>
+<body>
+    <div class="nav">
+        <a href="index.html">Главная</a>
+        <a href="profile.html">Профиль</a>
+        <a href="notifications.html">Уведомления</a>
+    </div>
+
+    <h1>Отчёт: пользователи по % прочитанных уведомлений</h1>
+    <p id="status">Загрузка отчёта...</p>
+    <div id="reportContainer"></div>
+
+    <script>
+        const token = localStorage.getItem('token');
+        async function loadReport(){
+            try{
+                const res = await fetch('/api/report', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if(!res.ok){
+                    document.getElementById('status').textContent = 'Ошибка получения отчёта';
+                    return;
+                }
+                const data = await res.json();
+                const rows = data.report || [];
+                if(rows.length===0){
+                    document.getElementById('status').textContent = 'Данных нет';
+                    return;
+                }
+                document.getElementById('status').style.display='none';
+                const html = ['<table><thead><tr><th>#</th><th>Пользователь</th><th>Всего</th><th>Прочитано</th><th>% прочитано</th><th>% непрочитано</th></tr></thead><tbody>'];
+                rows.forEach((r,i)=>{
+                    html.push(`<tr><td>${i+1}</td><td>${r.username}</td><td>${r.total_notifications}</td><td>${r.read_count}</td><td>${r.read_percent}%</td><td>${r.unread_percent}%</td></tr>`);
+                });
+                html.push('</tbody></table>');
+                document.getElementById('reportContainer').innerHTML = html.join('');
+            }catch(e){
+                document.getElementById('status').textContent = 'Ошибка сети';
+            }
+        }
+        document.addEventListener('DOMContentLoaded', loadReport);
+    </script>
+</body>
+</html>
