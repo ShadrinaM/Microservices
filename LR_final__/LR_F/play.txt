@@ -80,11 +80,6 @@ curl -H "Authorization: Bearer YOUR_TOKEN" http://localhost:8080/api/validate
 
 
 
-# 10. Мониторим логи PostgreSQL для проверки инициализации
-kubectl logs -n user-platform-exam postgres-0 -f
-
-# 11. Проверяем логи auth-service
-kubectl logs -n user-platform-exam deployment/auth-service -f
 
 
 
@@ -96,10 +91,53 @@ kubectl logs -n user-platform-exam deployment/auth-service -f
 
 
 
-docker build -t auth-service:latest src/auth-service
-docker build -t profile-service:latest src/profile-service
-docker build -t notification-service:latest src/notification-service
 
+#===================================
+# ЗАПУСК С ФРОНТЕНДОМ
+#===================================
+# Apply all Kubernetes configurations in order
+kubectl apply -f kubernetes/namespace.yaml
+kubectl apply -f kubernetes/secret.yaml
+kubectl apply -f kubernetes/configmap-ui.yaml
+kubectl apply -f kubernetes/configmap-postgres.yaml
+kubectl apply -f kubernetes/postgres.yaml
+
+# Wait for PostgreSQL to be ready
+kubectl wait --for=condition=ready pod/postgres-0 -n user-platform-exam --timeout=300s
+
+# Deploy auth-service
+kubectl apply -f kubernetes/auth-service.yaml
+
+# Wait for auth-service to be ready
+kubectl wait --for=condition=ready pod -l app=auth-service -n user-platform-exam --timeout=300s
+
+#----------------------------------
+# DEPLOY auth-service
+#----------------------------------
+cd src/auth-service
+docker build -t auth-service:latest .
+docker images | findstr "auth-service"
+cd ../..
+
+# 8. Разворачиваем auth-service
+kubectl apply -f kubernetes/auth-service.yaml
+
+
+#----------------------------------
+# DEPLOY frontend
+#----------------------------------
+# Build frontend Docker image
+docker build -t frontend:latest frontend
+
+# Deploy frontend
+kubectl apply -f kubernetes/frontend.yaml
+
+# Port-forward frontend (for local testing)
+kubectl port-forward -n user-platform-exam service/frontend 8081:80
+
+
+# Check all deployments
+kubectl get all -n user-platform-exam
 
 kubectl delete all --all
 
@@ -119,26 +157,58 @@ kubectl delete all --all
 
 
 
-# ЗАПУСК С ФРОНТЕНДОМ
 
-# Build frontend Docker image
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#===================================
+# ЗАПУСК НА 4
+#===================================
+
+# Build all Docker images
+docker build -t auth-service:latest src/auth-service
+docker build -t profile-service:latest src/profile-service
+docker build -t notification-service:latest src/notification-service
 docker build -t frontend:latest frontend
 
-# Apply all Kubernetes configurations in order
+# Clean up existing deployments
+kubectl delete all --all -n user-platform-exam
+
+# Apply Kubernetes configurations in order
 kubectl apply -f kubernetes/namespace.yaml
 kubectl apply -f kubernetes/secret.yaml
 kubectl apply -f kubernetes/configmap-ui.yaml
 kubectl apply -f kubernetes/configmap-postgres.yaml
+
+# Deploy PostgreSQL
 kubectl apply -f kubernetes/postgres.yaml
 
 # Wait for PostgreSQL to be ready
 kubectl wait --for=condition=ready pod/postgres-0 -n user-platform-exam --timeout=300s
 
-# Deploy auth-service
-kubectl apply -f kubernetes/auth-service.yaml
+# Verify database tables
+kubectl exec -n user-platform-exam postgres-0 -- psql -U admin -d userdb -c "\dt"
 
-# Wait for auth-service to be ready
+# Deploy all services
+kubectl apply -f kubernetes/auth-service.yaml
+kubectl apply -f kubernetes/profile-service.yaml
+kubectl apply -f kubernetes/notification-service.yaml
+
+# Wait for services to be ready
 kubectl wait --for=condition=ready pod -l app=auth-service -n user-platform-exam --timeout=300s
+kubectl wait --for=condition=ready pod -l app=profile-service -n user-platform-exam --timeout=300s
+kubectl wait --for=condition=ready pod -l app=notification-service -n user-platform-exam --timeout=300s
 
 # Deploy frontend
 kubectl apply -f kubernetes/frontend.yaml
@@ -146,19 +216,17 @@ kubectl apply -f kubernetes/frontend.yaml
 # Check all deployments
 kubectl get all -n user-platform-exam
 
-# Port-forward frontend (for local testing)
+# Port-forward services for testing
+# Run these in separate terminal windows:
 kubectl port-forward -n user-platform-exam service/frontend 8081:80
-
-# Port-forward auth-service (for direct API testing)
 kubectl port-forward -n user-platform-exam service/auth-service 8080:80
+kubectl port-forward -n user-platform-exam service/profile-service 8082:80
+kubectl port-forward -n user-platform-exam service/notification-service 8083:80
 
-# DEPLOY
+# View logs
+kubectl logs -n user-platform-exam -l app=auth-service -f
+kubectl logs -n user-platform-exam -l app=profile-service -f
+kubectl logs -n user-platform-exam -l app=notification-service -f
+kubectl logs -n user-platform-exam -l app=frontend -f
 
-# Build the frontend image
-docker build -t frontend:latest frontend
-
-# Deploy to Kubernetes
-kubectl apply -f kubernetes/frontend.yaml
-
-# Access the frontend
-kubectl port-forward -n user-platform-exam service/frontend 8081:80
+kubectl exec -n user-platform-exam postgres-0 -- psql -U admin -d userdb -c "SELECT * FROM notifications;"

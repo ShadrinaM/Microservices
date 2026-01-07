@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Уведомления</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        .nav-links {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .nav-link {
+            padding: 10px 20px;
+            background: #2196F3;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+        .nav-link:hover {
+            background: #1976D2;
+        }
+        .notification {
+            background: white;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .notification.unread {
+            background: #e3f2fd;
+            border-left-color: #4CAF50;
+        }
+        .notification.info {
+            border-left-color: #2196F3;
+        }
+        .notification.success {
+            border-left-color: #4CAF50;
+        }
+        .notification.warning {
+            border-left-color: #ff9800;
+        }
+        .notification.error {
+            border-left-color: #f44336;
+        }
+        .notification-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .notification-title {
+            font-weight: bold;
+            font-size: 18px;
+            color: #333;
+        }
+        .notification-date {
+            font-size: 12px;
+            color: #999;
+        }
+        .notification-message {
+            color: #555;
+            line-height: 1.6;
+        }
+        .notification-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .btn {
+            padding: 8px 16px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+        .btn:hover {
+            background: #45a049;
+        }
+        .btn-small {
+            padding: 5px 10px;
+            font-size: 12px;
+        }
+        .btn-danger {
+            background: #f44336;
+        }
+        .btn-danger:hover {
+            background: #d32f2f;
+        }
+        .btn-secondary {
+            background: #757575;
+        }
+        .btn-secondary:hover {
+            background: #616161;
+        }
+        .create-form {
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+            display: none;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: bold;
+        }
+        input, textarea, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        .message {
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+            display: none;
+        }
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            display: block;
+        }
+        .success {
+            background: #e8f5e9;
+            color: #2e7d32;
+            display: block;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .badge.unread {
+            background: #4CAF50;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="nav-links">
+            <a href="index.html" class="nav-link">Главная</a>
+            <a href="profile.html" class="nav-link">Профиль</a>
+        </div>
+        
+        <h1>Уведомления <span id="unreadBadge" class="badge unread" style="display: none;"></span></h1>
+        
+        <div id="message" class="message"></div>
+        
+        <div style="margin: 20px 0;">
+            <button class="btn" onclick="toggleCreateForm()">Создать уведомление</button>
+            <button class="btn btn-secondary" onclick="loadNotifications()">Обновить</button>
+        </div>
+        
+        <div id="createForm" class="create-form">
+            <h2>Создать уведомление</h2>
+            <form onsubmit="createNotification(event)">
+                <div class="form-group">
+                    <label for="title">Заголовок:</label>
+                    <input type="text" id="title" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="message">Сообщение:</label>
+                    <textarea id="messageText" required></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="type">Тип:</label>
+                    <select id="type">
+                        <option value="info">Информация</option>
+                        <option value="success">Успех</option>
+                        <option value="warning">Предупреждение</option>
+                        <option value="error">Ошибка</option>
+                    </select>
+                </div>
+                
+                <div style="display: flex; gap: 10px;">
+                    <button type="submit" class="btn" id="createBtn">Создать</button>
+                    <button type="button" class="btn btn-secondary" onclick="toggleCreateForm()">Отмена</button>
+                </div>
+            </form>
+        </div>
+        
+        <div id="notificationsList">
+            <p style="text-align: center; color: #999;">Загрузка уведомлений...</p>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = '';
+        const token = localStorage.getItem('token');
+        
+        if (!token) {
+            window.location.href = 'login.html';
+        }
+        
+        // Загрузка уведомлений
+        async function loadNotifications() {
+            try {
+                const response = await fetch(`${API_URL}/api/notifications`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    displayNotifications(data.notifications);
+                } else {
+                    showMessage('Ошибка загрузки уведомлений', 'error');
+                }
+            } catch (error) {
+                showMessage('Ошибка сети. Проверьте подключение.', 'error');
+            }
+        }
+        
+        // Отображение уведомлений
+        function displayNotifications(notifications) {
+            const container = document.getElementById('notificationsList');
+            
+            if (!notifications || notifications.length === 0) {
+                container.innerHTML = '<div class="empty-state">У вас пока нет уведомлений</div>';
+                document.getElementById('unreadBadge').style.display = 'none';
+                return;
+            }
+            
+            const unreadCount = notifications.filter(n => !n.is_read).length;
+            if (unreadCount > 0) {
+                document.getElementById('unreadBadge').textContent = unreadCount;
+                document.getElementById('unreadBadge').style.display = 'inline-block';
+            } else {
+                document.getElementById('unreadBadge').style.display = 'none';
+            }
+            
+            container.innerHTML = notifications.map(notif => `
+                <div class="notification ${notif.type} ${notif.is_read ? '' : 'unread'}" id="notif-${notif.id}">
+                    <div class="notification-header">
+                        <div class="notification-title">
+                            ${notif.title}
+                            ${notif.is_read ? '' : '<span class="badge unread">Новое</span>'}
+                        </div>
+                        <div class="notification-date">${new Date(notif.created_at).toLocaleString()}</div>
+                    </div>
+                    <div class="notification-message">${notif.message}</div>
+                    <div class="notification-actions">
+                        ${!notif.is_read ? `<button class="btn btn-small" onclick="markAsRead(${notif.id})">Отметить прочитанным</button>` : ''}
+                        <button class="btn btn-small btn-danger" onclick="deleteNotification(${notif.id})">Удалить</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // Показать/скрыть форму создания
+        function toggleCreateForm() {
+            const form = document.getElementById('createForm');
+            form.style.display = form.style.display === 'none' ? 'block' : 'none';
+            document.getElementById('message').style.display = 'none';
+        }
+        
+        // Создать уведомление
+        async function createNotification(event) {
+            event.preventDefault();
+            
+            const createBtn = document.getElementById('createBtn');
+            createBtn.disabled = true;
+            createBtn.textContent = 'Создание...';
+            
+            const title = document.getElementById('title').value;
+            const message = document.getElementById('messageText').value;
+            const type = document.getElementById('type').value;
+            
+            try {
+                const response = await fetch(`${API_URL}/api/notifications`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ title, message, type })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showMessage('Уведомление создано!', 'success');
+                    document.getElementById('title').value = '';
+                    document.getElementById('messageText').value = '';
+                    toggleCreateForm();
+                    loadNotifications();
+                } else {
+                    showMessage(data.error || 'Ошибка создания уведомления', 'error');
+                }
+            } catch (error) {
+                showMessage('Ошибка сети. Проверьте подключение.', 'error');
+            } finally {
+                createBtn.disabled = false;
+                createBtn.textContent = 'Создать';
+            }
+        }
+        
+        // Отметить как прочитанное
+        async function markAsRead(id) {
+            try {
+                const response = await fetch(`${API_URL}/api/notifications/${id}/read`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (response.ok) {
+                    loadNotifications();
+                } else {
+                    showMessage('Ошибка обновления уведомления', 'error');
+                }
+            } catch (error) {
+                showMessage('Ошибка сети. Проверьте подключение.', 'error');
+            }
+        }
+        
+        // Удалить уведомление
+        async function deleteNotification(id) {
+            if (!confirm('Вы уверены, что хотите удалить это уведомление?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_URL}/api/notifications/${id}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (response.ok) {
+                    loadNotifications();
+                    showMessage('Уведомление удалено', 'success');
+                } else {
+                    showMessage('Ошибка удаления уведомления', 'error');
+                }
+            } catch (error) {
+                showMessage('Ошибка сети. Проверьте подключение.', 'error');
+            }
+        }
+        
+        // Показать сообщение
+        function showMessage(text, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.className = `message ${type}`;
+            messageDiv.textContent = text;
+            messageDiv.style.display = 'block';
+            
+            setTimeout(() => {
+                messageDiv.style.display = 'none';
+            }, 5000);
+        }
+        
+        // При загрузке страницы
+        document.addEventListener('DOMContentLoaded', loadNotifications);
+    </script>
+</body>
+</html>

@@ -7,7 +7,7 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            max-width: 800px;
+            max-width: 900px;
             margin: 0 auto;
             padding: 20px;
             background-color: #f5f5f5;
@@ -23,6 +23,9 @@
             border-bottom: 2px solid #4CAF50;
             padding-bottom: 10px;
         }
+        .section {
+            margin: 30px 0;
+        }
         .user-info {
             background: #e8f5e9;
             padding: 20px;
@@ -37,6 +40,27 @@
             color: #555;
             display: inline-block;
             width: 150px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: bold;
+        }
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #4CAF50;
         }
         .actions {
             display: flex;
@@ -58,6 +82,10 @@
         }
         .btn:hover {
             background: #45a049;
+        }
+        .btn:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
         }
         .btn-secondary {
             background: #757575;
@@ -87,81 +115,120 @@
             color: #2e7d32;
             display: block;
         }
-        .token-info {
-            background: #e3f2fd;
-            padding: 15px;
+        .edit-form {
+            display: none;
+            background: #f5f5f5;
+            padding: 20px;
             border-radius: 5px;
-            margin-top: 20px;
-            font-family: monospace;
-            word-break: break-all;
-            font-size: 12px;
+            margin: 20px 0;
         }
-        .token-info h3 {
-            margin-top: 0;
+        .nav-links {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
         }
-        .logout-section {
-            margin-top: 40px;
-            padding-top: 20px;
-            border-top: 1px solid #ddd;
+        .nav-link {
+            padding: 10px 20px;
+            background: #2196F3;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+        .nav-link:hover {
+            background: #1976D2;
         }
     </style>
 </head>
 <body>
     <div class="container">
+        <div class="nav-links">
+            <a href="index.html" class="nav-link">Главная</a>
+            <a href="notifications.html" class="nav-link">Уведомления</a>
+        </div>
+        
         <h1 id="welcomeTitle">Личный кабинет</h1>
         
         <div id="message" class="message"></div>
         
-        <div id="userInfo" class="user-info">
-            <p>Загрузка информации о пользователе...</p>
+        <div class="section">
+            <h2>Информация о профиле</h2>
+            <div id="userInfo" class="user-info">
+                <p>Загрузка информации о пользователе...</p>
+            </div>
+            
+            <div class="actions">
+                <button class="btn" onclick="toggleEditForm()">Редактировать профиль</button>
+                <button class="btn btn-secondary" onclick="refreshProfile()">Обновить</button>
+                <button class="btn btn-secondary" onclick="window.location.href='index.html'">На главную</button>
+                <button class="btn btn-danger" onclick="logout()">Выйти</button>
+            </div>
         </div>
         
-        <div class="actions">
-            <button class="btn" onclick="validateToken()">Проверить токен</button>
-            <button class="btn btn-secondary" onclick="refreshProfile()">Обновить профиль</button>
-            <button class="btn btn-secondary" onclick="window.location.href='index.html'">На главную</button>
-        </div>
-        
-        <div id="tokenInfo" class="token-info" style="display: none;">
-            <h3>Информация о токене:</h3>
-            <pre id="tokenData"></pre>
-        </div>
-        
-        <div class="logout-section">
-            <button class="btn btn-danger" onclick="logout()">Выйти из системы</button>
+        <div id="editForm" class="edit-form">
+            <h2>Редактировать профиль</h2>
+            <form onsubmit="updateProfile(event)">
+                <div class="form-group">
+                    <label for="editUsername">Имя пользователя:</label>
+                    <input type="text" id="editUsername" name="username" minlength="3">
+                </div>
+                
+                <div class="form-group">
+                    <label for="editEmail">Email:</label>
+                    <input type="email" id="editEmail" name="email">
+                </div>
+                
+                <div class="form-group">
+                    <label for="editPassword">Новый пароль (оставьте пустым, чтобы не менять):</label>
+                    <input type="password" id="editPassword" name="password" minlength="6">
+                </div>
+                
+                <div class="form-group">
+                    <label for="editStatus">Статус:</label>
+                    <select id="editStatus" name="status">
+                        <option value="active">Активен</option>
+                        <option value="inactive">Неактивен</option>
+                        <option value="blocked">Заблокирован</option>
+                    </select>
+                </div>
+                
+                <div class="actions">
+                    <button type="submit" class="btn" id="saveBtn">Сохранить изменения</button>
+                    <button type="button" class="btn btn-secondary" onclick="toggleEditForm()">Отмена</button>
+                </div>
+            </form>
         </div>
     </div>
 
     <script>
         const API_URL = '';
-        
-        // Проверяем авторизацию
         const token = localStorage.getItem('token');
-        const username = localStorage.getItem('username');
         
         if (!token) {
             window.location.href = 'login.html';
         }
         
-        // Загружаем конфигурацию
+        let currentProfile = null;
+        
+        // Загрузка конфигурации
         async function loadConfig() {
             try {
                 const response = await fetch(`${API_URL}/api/config`);
                 if (response.ok) {
                     const data = await response.json();
                     document.getElementById('welcomeTitle').textContent = 
-                        data.data.welcome_message || 'Личный кабинет';
+                        data.data?.welcome_message || 'Личный кабинет';
                 }
             } catch (error) {
                 console.error('Ошибка загрузки конфигурации:', error);
             }
         }
         
-        // Загружаем информацию о пользователе
+        // Загрузка профиля
         async function loadUserInfo() {
             try {
-                // Валидируем токен
-                const response = await fetch(`${API_URL}/api/validate`, {
+                const response = await fetch(`${API_URL}/api/profile`, {
                     headers: {
                         'Authorization': `Bearer ${token}`
                     }
@@ -169,56 +236,105 @@
                 
                 if (response.ok) {
                     const data = await response.json();
+                    currentProfile = data;
                     
                     document.getElementById('userInfo').innerHTML = `
                         <p><span class="info-label">ID пользователя:</span> ${data.user_id}</p>
                         <p><span class="info-label">Имя пользователя:</span> ${data.username}</p>
-                        <p><span class="info-label">Токен:</span> Действителен</p>
-                        <p><span class="info-label">Статус:</span> Активен</p>
+                        <p><span class="info-label">Email:</span> ${data.email || 'Не указан'}</p>
+                        <p><span class="info-label">Статус:</span> ${data.status}</p>
+                        <p><span class="info-label">Создан:</span> ${new Date(data.created_at).toLocaleString()}</p>
                     `;
+                    
+                    // Заполняем форму редактирования
+                    document.getElementById('editUsername').value = data.username;
+                    document.getElementById('editEmail').value = data.email || '';
+                    document.getElementById('editStatus').value = data.status;
                 } else {
-                    document.getElementById('message').className = 'message error';
-                    document.getElementById('message').textContent = 'Токен недействителен. Пожалуйста, войдите снова.';
-                    document.getElementById('message').style.display = 'block';
-                    setTimeout(() => {
-                        logout();
-                    }, 3000);
+                    showMessage('Ошибка загрузки профиля', 'error');
+                    setTimeout(() => logout(), 3000);
                 }
             } catch (error) {
-                document.getElementById('message').className = 'message error';
-                document.getElementById('message').textContent = 'Ошибка сети. Проверьте подключение.';
-                document.getElementById('message').style.display = 'block';
+                showMessage('Ошибка сети. Проверьте подключение.', 'error');
             }
         }
         
-        // Проверка токена
-        async function validateToken() {
+        // Показать/скрыть форму редактирования
+        function toggleEditForm() {
+            const form = document.getElementById('editForm');
+            form.style.display = form.style.display === 'none' ? 'block' : 'none';
+            document.getElementById('message').style.display = 'none';
+        }
+        
+        // Обновление профиля
+        async function updateProfile(event) {
+            event.preventDefault();
+            
+            const saveBtn = document.getElementById('saveBtn');
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Сохранение...';
+            
+            const username = document.getElementById('editUsername').value;
+            const email = document.getElementById('editEmail').value;
+            const password = document.getElementById('editPassword').value;
+            const status = document.getElementById('editStatus').value;
+            
+            const updateData = {};
+            
+            if (username && username !== currentProfile.username) {
+                updateData.username = username;
+            }
+            if (email && email !== currentProfile.email) {
+                updateData.email = email;
+            }
+            if (password) {
+                updateData.password = password;
+            }
+            if (status && status !== currentProfile.status) {
+                updateData.status = status;
+            }
+            
+            if (Object.keys(updateData).length === 0) {
+                showMessage('Нет изменений для сохранения', 'error');
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'Сохранить изменения';
+                return;
+            }
+            
             try {
-                const response = await fetch(`${API_URL}/api/validate`, {
+                const response = await fetch(`${API_URL}/api/profile`, {
+                    method: 'PUT',
                     headers: {
+                        'Content-Type': 'application/json',
                         'Authorization': `Bearer ${token}`
-                    }
+                    },
+                    body: JSON.stringify(updateData)
                 });
                 
+                const data = await response.json();
+                
                 if (response.ok) {
-                    const data = await response.json();
+                    showMessage('Профиль успешно обновлен!', 'success');
                     
-                    document.getElementById('tokenData').textContent = 
-                        JSON.stringify(data, null, 2);
-                    document.getElementById('tokenInfo').style.display = 'block';
+                    // Обновляем username в localStorage если изменился
+                    if (updateData.username) {
+                        localStorage.setItem('username', updateData.username);
+                    }
                     
-                    document.getElementById('message').className = 'message success';
-                    document.getElementById('message').textContent = 'Токен действителен!';
-                    document.getElementById('message').style.display = 'block';
+                    // Очищаем поле пароля
+                    document.getElementById('editPassword').value = '';
+                    
+                    // Перезагружаем профиль
+                    await loadUserInfo();
+                    toggleEditForm();
                 } else {
-                    document.getElementById('message').className = 'message error';
-                    document.getElementById('message').textContent = 'Токен недействителен';
-                    document.getElementById('message').style.display = 'block';
+                    showMessage(data.error || 'Ошибка обновления профиля', 'error');
                 }
             } catch (error) {
-                document.getElementById('message').className = 'message error';
-                document.getElementById('message').textContent = 'Ошибка проверки токена';
-                document.getElementById('message').style.display = 'block';
+                showMessage('Ошибка сети. Проверьте подключение.', 'error');
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'Сохранить изменения';
             }
         }
         
@@ -228,7 +344,15 @@
             loadUserInfo();
         }
         
-        // Выход из системы
+        // Показать сообщение
+        function showMessage(text, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.className = `message ${type}`;
+            messageDiv.textContent = text;
+            messageDiv.style.display = 'block';
+        }
+        
+        // Выход
         function logout() {
             localStorage.removeItem('token');
             localStorage.removeItem('username');
