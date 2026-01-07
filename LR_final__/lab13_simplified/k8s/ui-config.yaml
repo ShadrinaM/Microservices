@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ui-config
+data:
+  LOGIN_TITLE: "Вход в систему"
+  REGISTER_TITLE: "Регистрация"
+  WELCOME_MESSAGE: "Добро пожаловать в платформу"

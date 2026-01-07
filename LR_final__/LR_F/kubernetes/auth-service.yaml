@@ -1,0 +1,71 @@
+# Pod + Container
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-service
+  namespace: user-platform-exam
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: auth-service
+  template:
+    metadata:
+      labels:
+        app: auth-service
+    spec:
+      containers:
+      - name: auth-service
+        image: auth-service:latest 
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 5000    # ← Контейнер слушает здесь
+        env:
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: jwt-secret
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: db-password
+        - name: DB_HOST
+          value: "postgres-service.user-platform-exam.svc.cluster.local"
+        - name: DB_NAME
+          value: "userdb"
+        - name: DB_USER
+          value: "admin"
+        - name: LOGIN_TITLE
+          valueFrom:
+            configMapKeyRef:
+              name: ui-config
+              key: login.title
+        livenessProbe:
+          httpGet:
+            path: /health/live
+            port: 5000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health/ready
+            port: 5000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+---
+# Service (шлюз в кластер)
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service
+  namespace: user-platform-exam
+spec:
+  selector:
+    app: auth-service  # Ищет Pod с этой меткой
+  ports:
+  - port: 80           # ← ВНЕШНИЙ порт сервиса (здесь сервис слушает Kubernetes)
+    targetPort: 5000   # ← ВНУТРЕННИЙ порт контейнера (сюда сервис перенаправлет трафик в контейнер) 
+
+# Пользователь → Service (порт 80) → Pod → Container (порт 5000)

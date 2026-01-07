@@ -1,0 +1,71 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Моя платформа</title>
+  <style>body{font-family:Arial;padding:20px}input{display:block;margin:6px 0}</style>
+</head>
+<body>
+  <div id="app"></div>
+  <script>
+    const api = { auth: '/api/auth', profile: '/api/profile' }; // will be proxied in k8s or adjusted by ingress
+    async function getConfig(){ return fetch('/config').then(r=>r.json()); }
+    function el(tag, txt){ const e = document.createElement(tag); if(txt) e.textContent = txt; return e; }
+    (async ()=>{
+      const cfg = await getConfig();
+      const app = document.getElementById('app');
+      app.appendChild(el('h1', cfg.WELCOME_MESSAGE));
+      const home = el('div');
+      const loginBtn = document.createElement('button'); loginBtn.textContent = cfg.LOGIN_TITLE; loginBtn.onclick = showLogin;
+      const regBtn = document.createElement('button'); regBtn.textContent = cfg.REGISTER_TITLE; regBtn.onclick = showRegister;
+      home.appendChild(loginBtn); home.appendChild(regBtn);
+      app.appendChild(home);
+
+      function showLogin(){
+        app.innerHTML = '';
+        app.appendChild(el('h2', cfg.LOGIN_TITLE));
+        const user = document.createElement('input'); user.placeholder='username';
+        const pass = document.createElement('input'); pass.type='password'; pass.placeholder='password';
+        const submit = document.createElement('button'); submit.textContent='Login';
+        submit.onclick = async ()=>{
+          const res = await fetch('/auth/login', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username:user.value,password:pass.value}) });
+          const data = await res.json();
+          if(data.token){ localStorage.setItem('token', data.token); showProfile(); }
+          else alert(JSON.stringify(data));
+        };
+        app.appendChild(user); app.appendChild(pass); app.appendChild(submit);
+      }
+
+      function showRegister(){
+        app.innerHTML = '';
+        app.appendChild(el('h2', cfg.REGISTER_TITLE));
+        const user = document.createElement('input'); user.placeholder='username';
+        const pass = document.createElement('input'); pass.type='password'; pass.placeholder='password';
+        const submit = document.createElement('button'); submit.textContent='Register';
+        submit.onclick = async ()=>{
+          const res = await fetch('/auth/register', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username:user.value,password:pass.value}) });
+          const data = await res.json();
+          if(data.id){ alert('ok'); showLogin(); } else alert(JSON.stringify(data));
+        };
+        app.appendChild(user); app.appendChild(pass); app.appendChild(submit);
+      }
+
+      async function showProfile(){
+        app.innerHTML = '<h2>Профиль</h2>';
+        const token = localStorage.getItem('token');
+        const res = await fetch('/profile/me', { headers: { Authorization: 'Bearer ' + token } });
+        if(res.status===200){
+          const data = await res.json();
+          const p = document.createElement('pre'); p.textContent = JSON.stringify(data, null, 2);
+          app.appendChild(p);
+        } else {
+          app.appendChild(el('div', 'Не авторизован'));
+        }
+      }
+
+      // try auto profile
+      if(localStorage.getItem('token')) showProfile();
+    })();
+  </script>
+</body>
+</html>

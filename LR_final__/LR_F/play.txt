@@ -1,0 +1,39 @@
+cd D:\Git\Microservices\LR_final__\LR_F\src\auth-service
+
+docker build -t auth-service:latest src/auth-service
+
+kubectl apply -f kubernetes/namespace.yaml
+kubectl apply -f kubernetes/configmap-ui.yaml
+kubectl apply -f kubernetes/secret.yaml
+kubectl apply -f kubernetes/configmap-postgres.yaml
+
+# 5. Разворачиваем PostgreSQL и ждем его готовности
+kubectl apply -f kubernetes/postgres.yaml
+
+# 6. Ждем, пока PostgreSQL запустится и инициализирует БД
+kubectl wait --for=condition=ready pod/postgres-0 -n user-platform-exam --timeout=300s
+
+# 7. Проверяем, что таблица создалась
+kubectl exec -n user-platform-exam postgres-0 -- psql -U admin -d userdb -c "\dt"
+kubectl exec -n user-platform-exam postgres-0 -- psql -U admin -d userdb -c "\d users"
+
+# 8. Разворачиваем auth-service
+kubectl apply -f kubernetes/auth-service.yaml
+
+# 9. Проверяем статус всех компонентов
+kubectl get all -n user-platform-exam
+
+# 10. Мониторим логи PostgreSQL для проверки инициализации
+kubectl logs -n user-platform-exam postgres-0 -f
+
+# 11. Проверяем логи auth-service
+kubectl logs -n user-platform-exam deployment/auth-service -f
+
+
+
+docker build -t auth-service:latest src/auth-service
+docker build -t profile-service:latest src/profile-service
+docker build -t notification-service:latest src/notification-service
+
+
+kubectl delete all --all

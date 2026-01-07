@@ -1,0 +1,10 @@
+# ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ui-config
+  namespace: user-platform-exam
+data:
+  login.title: "Вход в систему"
+  welcome.message: "Добро пожаловать в личный кабинет"
+  #   register.title: "Регистрация"
