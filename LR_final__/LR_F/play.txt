@@ -1,6 +1,4 @@
-cd D:\Git\Microservices\LR_final__\LR_F\src\auth-service
-
-docker build -t auth-service:latest src/auth-service
+cd D:\Git\Microservices\LR_final__\LR_F
 
 kubectl apply -f kubernetes/namespace.yaml
 kubectl apply -f kubernetes/configmap-ui.yaml
@@ -13,9 +11,14 @@ kubectl apply -f kubernetes/postgres.yaml
 # 6. Ждем, пока PostgreSQL запустится и инициализирует БД
 kubectl wait --for=condition=ready pod/postgres-0 -n user-platform-exam --timeout=300s
 
-# 7. Проверяем, что таблица создалась
-kubectl exec -n user-platform-exam postgres-0 -- psql -U admin -d userdb -c "\dt"
+# 7. Проверьте БД
 kubectl exec -n user-platform-exam postgres-0 -- psql -U admin -d userdb -c "\d users"
+kubectl exec -n user-platform-exam postgres-0 -- psql -U admin -d userdb -c "SELECT * FROM users;"
+
+cd src/auth-service
+docker build -t auth-service:latest .
+docker images | findstr "auth-service"
+cd ../..
 
 # 8. Разворачиваем auth-service
 kubectl apply -f kubernetes/auth-service.yaml
@@ -23,11 +26,73 @@ kubectl apply -f kubernetes/auth-service.yaml
 # 9. Проверяем статус всех компонентов
 kubectl get all -n user-platform-exam
 
+#===================================
+# ТЕСТЫ auth-service
+#===================================
+# Получаем доступ к auth-service через port-forward
+kubectl port-forward -n user-platform-exam service/auth-service 8080:80
+
+# В другом терминале тестируем
+curl http://localhost:8080/health/live
+# Должен быть: {"status": "alive"}
+
+curl http://localhost:8080/health/ready  
+# Должен быть: {"status": "ready", "database": "connected"}
+
+# Тестирование /api/register
+curl -X POST http://localhost:8080/api/register ^
+  -H "Content-Type: application/json" ^
+  -d "{\"username\": \"student1\", \"password\": \"password123\"}"
+
+curl -X POST http://localhost:8080/api/register ^
+  -H "Content-Type: application/json" ^
+  -d "{\"username\": \"student2\", \"password\": \"password456\", \"email\": \"student2@example.com\"}"
+
+# Тестирование /api/login
+curl -X POST http://localhost:8080/api/login ^
+  -H "Content-Type: application/json" ^
+  -d "{\"username\": \"student2\", \"password\": \"password456\"}"
+
+# Тестирование /api/config
+curl http://localhost:8080/api/config
+
+# Тестирование /api/validate
+# 1. Регистрация (если пользователя нет)
+curl -X POST http://localhost:8080/api/register ^
+  -H "Content-Type: application/json" ^
+  -d "{\"username\": \"testuser\", \"password\": \"testpass\"}"
+
+# 2. Логин и сохранение токена в переменную
+curl -X POST http://localhost:8080/api/login ^
+  -H "Content-Type: application/json" ^
+  -d "{\"username\": \"testuser\", \"password\": \"testpass\"}" ^
+  -o login_response.json
+
+# 3. Извлекаем токен из файла (вручную)
+type login_response.json
+# замените YOUR_TOKEN
+curl -H "Authorization: Bearer YOUR_TOKEN" http://localhost:8080/api/validate
+
+
+
+
+
+
+
+
 # 10. Мониторим логи PostgreSQL для проверки инициализации
 kubectl logs -n user-platform-exam postgres-0 -f
 
 # 11. Проверяем логи auth-service
 kubectl logs -n user-platform-exam deployment/auth-service -f
+
+
+
+
+
+
+
+
 
 
 
