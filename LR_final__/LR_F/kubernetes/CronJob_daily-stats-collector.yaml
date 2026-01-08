@@ -1,0 +1,56 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: daily-stats-collector
+  namespace: user-platform-exam
+spec:
+  schedule: "0 2 * * *" # каждый день в 02:00
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: stats-collector
+              image: postgres:15-alpine
+              env:
+                - name: DB_HOST
+                  value: "postgres-service.user-platform-exam.svc.cluster.local"
+                - name: DB_NAME
+                  value: "userdb"
+                - name: DB_USER
+                  value: "admin"
+                - name: DB_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: app-secrets
+                      key: db-password
+              command: ["/bin/sh","-c"]
+              args:
+                - |
+                  export PGPASSWORD="$DB_PASSWORD"
+                  psql -h "$DB_HOST" -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 <<'SQL'
+                  CREATE TABLE IF NOT EXISTS daily_user_stats (
+                    stat_date date,
+                    user_id integer,
+                    total_notifications integer,
+                    read_count integer,
+                    PRIMARY KEY (stat_date, user_id)
+                  );
+                  -- Полностью очищаем таблицу и заново заполняем
+                  TRUNCATE TABLE daily_user_stats;
+                  
+                  -- Вставляем свежие данные (все пользователи со всей историей)
+                  INSERT INTO daily_user_stats (stat_date, user_id, total_notifications, read_count)
+                  SELECT 
+                    CURRENT_DATE - 1 AS stat_date,
+                    u.id,
+                    COUNT(n.id) AS total_notifications,
+                    COALESCE(SUM(CASE WHEN n.is_read THEN 1 ELSE 0 END), 0) AS read_count
+                  FROM users u
+                  LEFT JOIN notifications n ON n.user_id = u.id 
+                    AND n.created_at >= NOW() - INTERVAL '24 hours'  -- ТОЛЬКО последние 24 часа!
+                  GROUP BY u.id;
+                  SQL

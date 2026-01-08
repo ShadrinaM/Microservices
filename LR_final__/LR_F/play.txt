@@ -176,6 +176,10 @@ kubectl delete all --all
 # ЗАПУСК НА 4
 #===================================
 
+cd ../..
+D:
+cd D:\Git\Microservices\LR_final__\LR_F
+
 # Build all Docker images
 docker build -t auth-service:latest src/auth-service
 docker build -t profile-service:latest src/profile-service
@@ -219,22 +223,74 @@ kubectl apply -f kubernetes/frontend.yaml
 # Check all deployments
 kubectl get all -n user-platform-exam
 
-# Port-forward services for testing
-# Run these in separate terminal windows:
+# Перевод фронта на порт для отображения
 kubectl port-forward -n user-platform-exam service/frontend 8081:80
 
-kubectl port-forward -n user-platform-exam service/auth-service 8080:80
-kubectl port-forward -n user-platform-exam service/profile-service 8082:80
-kubectl port-forward -n user-platform-exam service/notification-service 8083:80
-kubectl port-forward -n user-platform-exam service/report-service 8084:80
+# Применение CronJob:
+kubectl apply -f kubernetes/CronJob_daily-stats-collector.yaml
+kubectl apply -f kubernetes/CronJob_notification-sender.yaml
+kubectl apply -f kubernetes/CronJob_data-cleanup.yaml
 
-# View logs
+# ------------------------------------------
+# ПРОВЕРКА CronJob
+# ------------------------------------------
+
+# поменять интервал на каждыые 2 минуты CronJob_daily-stats-collector
+
+# изменение расписания на тестовое
+kubectl patch cronjob/daily-stats-collector -n user-platform-exam --type=merge -p "{\"spec\":{\"schedule\":\"*/1 * * * *\"}}"
+kubectl patch cronjob/notification-sender -n user-platform-exam --type=merge -p "{\"spec\":{\"schedule\":\"*/1 * * * *\"}}"
+kubectl patch cronjob/data-cleanup -n user-platform-exam --type=merge -p "{\"spec\":{\"schedule\":\"*/1 * * * *\"}}"
+
+# отметить одно сообщение прочитаным и дождаться пока появится новое
+
+# Проверка CronJob daily-stats-collector
+kubectl exec -n user-platform-exam postgres-0 -- psql -U admin -d userdb -c "SELECT * FROM daily_user_stats;"
+
+# возврат расписания
+kubectl patch cronjob/daily-stats-collector -n user-platform-exam --type=merge -p "{\"spec\":{\"schedule\":\"*0 2 * * *\"}}"
+kubectl patch cronjob/notification-sender -n user-platform-exam --type=merge -p "{\"spec\":{\"schedule\":\"*0 9 * * *\"}}"
+kubectl patch cronjob/data-cleanup -n user-platform-exam --type=merge -p "{\"spec\":{\"schedule\":\"*0 0 * * 0\"}}"
+
+# ------------------------------------------
+# ДЛЯ ТЕСТИРОВНИЯ
+# ------------------------------------------
+
+# ЛОГИ СЕРВИСОВ
 kubectl logs -n user-platform-exam -l app=auth-service -f
 kubectl logs -n user-platform-exam -l app=profile-service -f
 kubectl logs -n user-platform-exam -l app=notification-service -f
 kubectl logs -n user-platform-exam -l app=frontend -f
 
+# Перевод сервисов на порт для теста
+kubectl port-forward -n user-platform-exam service/auth-service 8080:80
+kubectl port-forward -n user-platform-exam service/profile-service 8082:80
+kubectl port-forward -n user-platform-exam service/notification-service 8083:80
+kubectl port-forward -n user-platform-exam service/report-service 8084:80
+
+# ЛОГИ КРОНДЖОБОВ
+kubectl get jobs -n user-platform-exam
+kubectl logs job/daily-stats-collector-29464867 -n user-platform-exam
+
+# Просмотр логов СКРИПТОМ
+chmod +x scripts/view_cronjob_logs.sh
+./scripts/view_cronjob_logs.sh
+
+# Проверка содержимого таблицы notifications
 kubectl exec -n user-platform-exam postgres-0 -- psql -U admin -d userdb -c "SELECT * FROM notifications;"
 
+# Данные зарегистрированного аккаунта
 student112
 password123
+
+# ------------------------------------------
+# ОЧИСТКА
+# ------------------------------------------
+kubectl delete all --all -n user-platform-exam
+kubectl get all -n user-platform-exam
+
+docker image ls
+docker image prune -a
+
+docker ps -a
+docker container prune

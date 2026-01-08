@@ -1,0 +1,41 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: notification-sender
+  namespace: user-platform-exam
+spec:
+  schedule: "0 9 * * *" # каждый день в 09:00
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: notification-sender
+              image: postgres:15-alpine
+              env:
+                - name: DB_HOST
+                  value: "postgres-service.user-platform-exam.svc.cluster.local"
+                - name: DB_NAME
+                  value: "userdb"
+                - name: DB_USER
+                  value: "admin"
+                - name: DB_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: app-secrets
+                      key: db-password
+              command: ["/bin/sh","-c"]
+              args:
+                - |
+                  export PGPASSWORD="$DB_PASSWORD"
+                  psql -h "$DB_HOST" -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 <<'SQL'
+                  INSERT INTO notifications (user_id, title, message, type, is_read)
+                  SELECT id, 'Доброе утро!', 'Добро пожаловать на сайт!', 'info', false
+                  FROM users
+                  WHERE status = 'active';
+                  SQL
+                  

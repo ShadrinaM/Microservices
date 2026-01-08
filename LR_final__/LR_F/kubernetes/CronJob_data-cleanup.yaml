@@ -1,0 +1,37 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: data-cleanup
+  namespace: user-platform-exam
+spec:
+  schedule: "0 0 * * 0" # каждое воскресенье в 00:00
+  successfulJobsHistoryLimit: 5
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: data-cleanup
+              image: postgres:15-alpine
+              env:
+                - name: DB_HOST
+                  value: "postgres-service.user-platform-exam.svc.cluster.local"
+                - name: DB_NAME
+                  value: "userdb"
+                - name: DB_USER
+                  value: "admin"
+                - name: DB_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: app-secrets
+                      key: db-password
+              command: ["/bin/sh","-c"]
+              args:
+                - |
+                  export PGPASSWORD="$DB_PASSWORD"
+                  # Удаляем уведомления старше 30 дней и выводим количество удалённых строк в лог (30 days/2 minutes для проверки)
+                  COUNT=$(psql -h "$DB_HOST" -U "$DB_USER" -d "$DB_NAME" -t -A -v ON_ERROR_STOP=1 -c "WITH d AS (DELETE FROM notifications WHERE created_at < NOW() - INTERVAL '30 days' RETURNING 1) SELECT count(*) FROM d;")
+                  echo "$(date -u +'%Y-%m-%dT%H:%M:%SZ') Deleted notifications older than 30 days: ${COUNT:-0}"
+          terminationGracePeriodSeconds: 30
