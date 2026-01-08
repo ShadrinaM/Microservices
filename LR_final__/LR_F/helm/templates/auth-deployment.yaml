@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-service
+  namespace: user-platform-exam
+spec:
+  replicas: {{ .Values.replicaCounts.auth }}
+  selector:
+    matchLabels:
+      app: auth-service
+  template:
+    metadata:
+      labels:
+        app: auth-service
+    spec:
+      containers:
+      - name: auth-service
+        image: "{{ .Values.images.auth.repository }}:{{ .Values.images.auth.tag }}"
+        ports:
+        - containerPort: 5000
+        env:
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: jwt-secret
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: db-password
+        - name: DB_HOST
+          value: "postgres-service.user-platform-exam.svc.cluster.local"
+        - name: DB_NAME
+          value: "{{ .Values.postgres.dbName }}"
+        - name: DB_USER
+          value: "{{ .Values.postgres.dbUser }}"
+        - name: LOGIN_TITLE
+          valueFrom:
+            configMapKeyRef:
+              name: ui-config
+              key: login.title
+        livenessProbe:
+          httpGet:
+            path: /health/live
+            port: 5000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health/ready
+            port: 5000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service
+  namespace: user-platform-exam
+spec:
+  selector:
+    app: auth-service
+  ports:
+  - port: 80
+    targetPort: 5000

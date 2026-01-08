@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-service
+  namespace: user-platform-exam
+spec:
+  replicas: {{ .Values.replicaCounts.notification }}
+  selector:
+    matchLabels:
+      app: notification-service
+  template:
+    metadata:
+      labels:
+        app: notification-service
+    spec:
+      containers:
+      - name: notification-service
+        image: "{{ .Values.images.notification.repository }}:{{ .Values.images.notification.tag }}"
+        ports:
+        - containerPort: 5002
+        env:
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: jwt-secret
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: db-password
+        - name: DB_HOST
+          value: "postgres-service.user-platform-exam.svc.cluster.local"
+        - name: DB_NAME
+          value: "{{ .Values.postgres.dbName }}"
+        - name: DB_USER
+          value: "{{ .Values.postgres.dbUser }}"
+        livenessProbe:
+          httpGet:
+            path: /health/live
+            port: 5002
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health/ready
+            port: 5002
+          initialDelaySeconds: 30
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notification-service
+  namespace: user-platform-exam
+spec:
+  selector:
+    app: notification-service
+  ports:
+  - port: 80
+    targetPort: 5002

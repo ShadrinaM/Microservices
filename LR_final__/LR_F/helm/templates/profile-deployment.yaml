@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: profile-service
+  namespace: user-platform-exam
+spec:
+  replicas: {{ .Values.replicaCounts.profile }}
+  selector:
+    matchLabels:
+      app: profile-service
+  template:
+    metadata:
+      labels:
+        app: profile-service
+    spec:
+      containers:
+      - name: profile-service
+        image: "{{ .Values.images.profile.repository }}:{{ .Values.images.profile.tag }}"
+        ports:
+        - containerPort: 5001
+        env:
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: jwt-secret
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: db-password
+        - name: DB_HOST
+          value: "postgres-service.user-platform-exam.svc.cluster.local"
+        - name: DB_NAME
+          value: "{{ .Values.postgres.dbName }}"
+        - name: DB_USER
+          value: "{{ .Values.postgres.dbUser }}"
+        livenessProbe:
+          httpGet:
+            path: /health/live
+            port: 5001
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health/ready
+            port: 5001
+          initialDelaySeconds: 30
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: profile-service
+  namespace: user-platform-exam
+spec:
+  selector:
+    app: profile-service
+  ports:
+  - port: 80
+    targetPort: 5001

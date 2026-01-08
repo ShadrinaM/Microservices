@@ -294,3 +294,84 @@ docker image prune -a
 
 docker ps -a
 docker container prune
+
+
+
+
+
+
+
+
+
+
+
+
+
+#===================================
+# ЗАПУСК НА 5
+#===================================
+
+cd D:\Git\Microservices\LR_final__\LR_F
+
+REM Собираем все Docker-образы локально
+docker build -t auth-service:latest src/auth-service
+docker build -t profile-service:latest src/profile-service
+docker build -t notification-service:latest src/notification-service
+docker build -t report-service:latest src/report-service
+docker build -t frontend:latest frontend
+
+REM Проверяем, что все образы собрались
+docker images | findstr "auth-service\|profile-service\|notification-service\|report-service\|frontend"
+
+REM Удаляем старый Helm release
+helm uninstall user-platform-exam -n user-platform-exam
+
+REM Удаляем старый namespace
+kubectl delete namespace user-platform-exam
+
+REM Ждём удаления
+timeout /t 5 /nobreak
+
+REM Устанавливаем Helm chart
+helm install user-platform-exam ./helm --namespace user-platform-exam --create-namespace
+
+REM Проверяем статус установки
+helm status user-platform-exam -n user-platform-exam
+
+REM Ждём, пока PostgreSQL запустится и инициализирует БД
+kubectl wait --for=condition=ready pod/postgres-0 -n user-platform-exam --timeout=300s
+
+REM Проверяем таблицы в БД
+kubectl exec -n user-platform-exam postgres-0 -- psql -U admin -d userdb -c "\dt"
+
+REM Проверяем, что таблица users пустая
+kubectl exec -n user-platform-exam postgres-0 -- psql -U admin -d userdb -c "SELECT * FROM users;"
+
+REM Ждём готовности auth-service
+kubectl wait --for=condition=ready pod -l app=auth-service -n user-platform-exam --timeout=300s
+
+REM Ждём готовности profile-service
+kubectl wait --for=condition=ready pod -l app=profile-service -n user-platform-exam --timeout=300s
+
+REM Ждём готовности notification-service
+kubectl wait --for=condition=ready pod -l app=notification-service -n user-platform-exam --timeout=300s
+
+REM Ждём готовности report-service
+kubectl wait --for=condition=ready pod -l app=report-service -n user-platform-exam --timeout=300s
+
+REM Ждём готовности frontend
+kubectl wait --for=condition=ready pod -l app=frontend -n user-platform-exam --timeout=300s
+
+REM Проверяем статус всех ресурсов
+kubectl get all -n user-platform-exam
+
+REM Проверяем, что CronJob'ы созданы
+kubectl get cronjobs -n user-platform-exam
+
+REM Смотрим расписание
+kubectl describe cronjob/daily-stats-collector -n user-platform-exam
+kubectl describe cronjob/notification-sender -n user-platform-exam
+kubectl describe cronjob/data-cleanup -n user-platform-exam
+
+REM Терминал: Frontend
+kubectl port-forward -n user-platform-exam service/frontend 8081:80

@@ -1,0 +1,81 @@
+namespace:
+  create: true
+  name: user-platform-exam
+
+# Параметризация реплик, образов и расписаний
+replicaCounts:
+  auth: 2
+  profile: 2
+  notification: 2
+  report: 2
+  frontend: 2
+
+images:
+  auth:
+    repository: auth-service
+    tag: latest
+  profile:
+    repository: profile-service
+    tag: latest
+  notification:
+    repository: notification-service
+    tag: latest
+  report:
+    repository: report-service
+    tag: latest
+  frontend:
+    repository: frontend
+    tag: latest
+  postgres:
+    repository: postgres
+    tag: "15-alpine"
+
+postgres:
+  dbName: userdb
+  dbUser: admin
+  dbPassword: postgres123
+  persistence:
+    enabled: true
+    size: 1Gi
+
+secrets:
+  jwtSecret: my-super-secret-key-123
+  dbPassword: postgres123
+
+uiConfig:
+  loginTitle: "Вход в систему"
+  welcomeMessage: "Добро пожаловать в личный кабинет"
+
+postgresInitSql: |
+  CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    email VARCHAR(100),
+    status VARCHAR(20) DEFAULT 'active',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+  CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+  CREATE INDEX IF NOT EXISTS idx_users_status ON users(status);
+  CREATE TABLE IF NOT EXISTS notifications (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    type VARCHAR(20) DEFAULT 'info',
+    is_read BOOLEAN DEFAULT false,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
+  CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications(created_at);
+  CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON notifications(is_read);
+
+cronSchedules:
+  dailyStats: "0 2 * * *"
+  notificationSender: "0 9 * * *"
+  dataCleanup: "0 0 * * 0"
+
+ingress:
+  enabled: true
+  host: ""
