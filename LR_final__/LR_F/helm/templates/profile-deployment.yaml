@@ -16,6 +16,7 @@ spec:
       containers:
       - name: profile-service
         image: "{{ .Values.images.profile.repository }}:{{ .Values.images.profile.tag }}"
+        imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 5001
         env:

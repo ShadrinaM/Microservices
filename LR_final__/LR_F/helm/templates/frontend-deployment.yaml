@@ -16,6 +16,7 @@ spec:
       containers:
       - name: frontend
         image: "{{ .Values.images.frontend.repository }}:{{ .Values.images.frontend.tag }}"
+        imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 80
         livenessProbe:

@@ -31,6 +31,7 @@ spec:
               args:
                 - |
                   export PGPASSWORD="$DB_PASSWORD"
-                  COUNT=$(psql -h "$DB_HOST" -U "$DB_USER" -d "$DB_NAME" -t -A -v ON_ERROR_STOP=1 -c "WITH d AS (DELETE FROM notifications WHERE created_at < NOW() - INTERVAL '30 days' RETURNING 1) SELECT count(*) FROM d;")
+                  # (30 days/2 minutes для проверки)
+                  COUNT=$(psql -h "$DB_HOST" -U "$DB_USER" -d "$DB_NAME" -t -A -v ON_ERROR_STOP=1 -c "WITH d AS (DELETE FROM notifications WHERE created_at < NOW() - INTERVAL '2 minutes' RETURNING 1) SELECT count(*) FROM d;")
                   echo "$(date -u +'%Y-%m-%dT%H:%M:%SZ') Deleted notifications older than 30 days: ${COUNT:-0}"
           terminationGracePeriodSeconds: 30

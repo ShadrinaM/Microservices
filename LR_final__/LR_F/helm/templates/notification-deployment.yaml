@@ -16,6 +16,7 @@ spec:
       containers:
       - name: notification-service
         image: "{{ .Values.images.notification.repository }}:{{ .Values.images.notification.tag }}"
+        imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 5002
         env:

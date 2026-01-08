@@ -307,6 +307,12 @@ docker container prune
 
 
 
+
+
+
+
+
+
 #===================================
 # ЗАПУСК НА 5
 #===================================
@@ -365,13 +371,38 @@ kubectl wait --for=condition=ready pod -l app=frontend -n user-platform-exam --t
 REM Проверяем статус всех ресурсов
 kubectl get all -n user-platform-exam
 
-REM Проверяем, что CronJob'ы созданы
-kubectl get cronjobs -n user-platform-exam
-
-REM Смотрим расписание
-kubectl describe cronjob/daily-stats-collector -n user-platform-exam
-kubectl describe cronjob/notification-sender -n user-platform-exam
-kubectl describe cronjob/data-cleanup -n user-platform-exam
 
 REM Терминал: Frontend
 kubectl port-forward -n user-platform-exam service/frontend 8081:80
+
+
+# ------------------------------------------
+# ПРОВЕРКА CronJob
+# ------------------------------------------
+
+# поменять интервал на каждыые 2 минуты CronJob_daily-stats-collector
+
+helm upgrade --install user-platform-exam ./helm --namespace user-platform-exam
+
+# изменение расписания на тестовое
+kubectl patch cronjob/daily-stats-collector -n user-platform-exam --type=merge -p "{\"spec\":{\"schedule\":\"*/1 * * * *\"}}"
+kubectl patch cronjob/notification-sender -n user-platform-exam --type=merge -p "{\"spec\":{\"schedule\":\"*/1 * * * *\"}}"
+kubectl patch cronjob/data-cleanup -n user-platform-exam --type=merge -p "{\"spec\":{\"schedule\":\"*/1 * * * *\"}}"
+
+# ИЛИ
+helm upgrade user-platform-exam ./helm \
+  --namespace user-platform-exam \
+  --set cronSchedules.dataCleanup="*/1 * * * *"
+  
+# отметить одно сообщение прочитаным и дождаться пока появится новое
+
+# Проверка CronJob daily-stats-collector
+kubectl exec -n user-platform-exam postgres-0 -- psql -U admin -d userdb -c "SELECT * FROM daily_user_stats;"
+
+# возврат расписания
+kubectl patch cronjob/daily-stats-collector -n user-platform-exam --type=merge -p "{\"spec\":{\"schedule\":\"*0 2 * * *\"}}"
+kubectl patch cronjob/notification-sender -n user-platform-exam --type=merge -p "{\"spec\":{\"schedule\":\"*0 9 * * *\"}}"
+kubectl patch cronjob/data-cleanup -n user-platform-exam --type=merge -p "{\"spec\":{\"schedule\":\"*0 0 * * 0\"}}"
+
+
+
